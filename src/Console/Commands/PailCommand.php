@@ -26,6 +26,7 @@ class PailCommand extends Command
         {--level= : Filter the logs by the given level}
         {--auth= : Filter the logs by the given authenticated ID}
         {--user= : Filter the logs by the given authenticated ID (alias for --auth)}
+        {--file= : The path to a custom log file to tail}
         {--timeout=3600 : The maximum execution time in seconds}';
 
     /**
@@ -47,36 +48,42 @@ class PailCommand extends Command
 
         renderUsing($this->output);
         render(<<<'HTML'
-            <div class="max-w-150 mx-2 mt-1 flex">
-                <div>
-                    <span class="px-1 bg-blue uppercase text-white">INFO</span>
-                    <span class="flex-1">
-                        <span class="ml-1 ">Tailing application logs.</span>
-                    </span>
-                </div>
-                <span class="flex-1"></span>
-                <span class="text-gray ml-1">
-                    <span class="text-gray">Press Ctrl+C to exit</span>
+        <div class="max-w-150 mx-2 mt-1 flex">
+            <div>
+                <span class="px-1 bg-blue uppercase text-white">INFO</span>
+                <span class="flex-1">
+                    <span class="ml-1 ">Tailing application logs.</span>
                 </span>
             </div>
-            HTML,
+            <span class="flex-1"></span>
+            <span class="text-gray ml-1">
+                <span class="text-gray">Press Ctrl+C to exit</span>
+            </span>
+        </div>
+        HTML,
         );
 
         render(<<<'HTML'
-            <div class="max-w-150 mx-2 flex">
-                <div>
-                </div>
-                <span class="flex-1"></span>
-                <span class="text-gray ml-1">
-                    <span class="text-gray">Use -v|-vv to show more details</span>
-                </span>
+        <div class="max-w-150 mx-2 flex">
+            <div>
             </div>
-            HTML,
+            <span class="flex-1"></span>
+            <span class="text-gray ml-1">
+                <span class="text-gray">Use -v|-vv to show more details</span>
+            </span>
+        </div>
+        HTML,
         );
 
-        $this->file = new File(storage_path('pail/'.uniqid().'.pail'));
-        $this->file->create();
-        $this->trap([SIGINT, SIGTERM], fn () => $this->file->destroy());
+        $customFilePath = $this->option('file');
+
+        if (is_string($customFilePath) && $customFilePath !== '') {
+            $this->file = new File($customFilePath);
+        } else {
+            $this->file = new File(storage_path('pail/'.uniqid().'.pail'));
+            $this->file->create();
+            $this->trap([SIGINT, SIGTERM], fn () => $this->file->destroy());
+        }
 
         $options = Options::fromCommand($this);
 
@@ -91,7 +98,9 @@ class PailCommand extends Command
         } catch (ProcessTimedOutException $e) {
             $this->components->info('Maximum execution time exceeded.');
         } finally {
-            $this->file?->destroy();
+            if (! is_string($customFilePath) || $customFilePath === '') {
+                $this->file?->destroy();
+            }
         }
     }
 
@@ -100,7 +109,7 @@ class PailCommand extends Command
      */
     public function __destruct()
     {
-        if ($this->file) {
+        if ($this->file && ! $this->option('file')) {
             $this->file->destroy();
         }
     }
