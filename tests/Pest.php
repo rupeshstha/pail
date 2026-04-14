@@ -44,7 +44,6 @@ uses(TestCase::class)
 
             $GLOBALS['customFileProcess'] = null;
         }
-        }
     })->in(__DIR__);
 
 /*
@@ -147,6 +146,7 @@ expect()->extend('toPailFile', function (string $expectedOutput) {
     $waitFor = trim($matches[1] ?? (string) $lastLine);
 
     $deadline = time() + 15;
+
     do {
         $output = preg_replace('/\e\[[\d;]*m/', '', $GLOBALS['customFileProcess']->getOutput());
         usleep(10);
