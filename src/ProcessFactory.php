@@ -2,12 +2,12 @@
 
 namespace Laravel\Pail;
 
-use Throwable;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Laravel\Pail\Printers\CliPrinter;
-use Illuminate\Support\Facades\Process;
 use Laravel\Pail\ValueObjects\MessageLogged;
 use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
 
 class ProcessFactory
 {
@@ -55,7 +55,7 @@ class ProcessFactory
                                 }
                             }
                         })
-                        ->filter(fn ($messageLogged) => $messageLogged instanceof MessageLogged)
+                        ->filter(fn (MessageLogged|null $messageLogged): bool => $messageLogged instanceof MessageLogged)
                         ->filter(fn (MessageLogged $messageLogged) => $options->accepts($messageLogged))
                         ->each(fn (MessageLogged $messageLogged) => $printer->print($messageLogged));
                 }

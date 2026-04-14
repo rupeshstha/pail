@@ -4,6 +4,7 @@ namespace Laravel\Pail\ValueObjects;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Env;
+use InvalidArgumentException;
 use Stringable;
 
 class MessageLogged implements Stringable
@@ -30,7 +31,7 @@ class MessageLogged implements Stringable
     public static function fromLaravelLog(string $line): static
     {
         if (! preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \w+\.(\w+): (.+)$/s', $line, $matches)) {
-            throw new \InvalidArgumentException('Cannot parse log line.');
+            throw new InvalidArgumentException('Cannot parse log line.');
         }
 
         $time = Carbon::createFromFormat('Y-m-d H:i:s', $matches[1]);
@@ -43,7 +44,7 @@ class MessageLogged implements Stringable
         $context = [
             '__pail' => [
                 'origin' => [
-                    'type' => 'http',
+                    'type' => 'cli',
                     'method' => '',
                     'path' => '',
                     'auth_id' => null,

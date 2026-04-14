@@ -24,6 +24,7 @@ use function Orchestra\Testbench\remote;
 */
 
 $GLOBALS['process'] = null;
+$GLOBALS['customFileProcess'] = null;
 
 uses(TestCase::class)
     ->beforeAll(fn () => $_ENV['PAIL_TESTS'] = true)
@@ -37,6 +38,12 @@ uses(TestCase::class)
             $GLOBALS['process'] = null;
 
             File::deleteDirectory(storage_path('pail'));
+        }
+        if ($GLOBALS['customFileProcess']) {
+            (fn () => $this->process->stop())->call($GLOBALS['customFileProcess']);
+
+            $GLOBALS['customFileProcess'] = null;
+        }
         }
     })->in(__DIR__);
 
@@ -101,7 +108,7 @@ expect()->extend('toPail', function (string $expectedOutput, array $options = []
 });
 
 expect()->extend('toPailFile', function (string $expectedOutput) {
-    if ($GLOBALS['process'] === null) {
+    if ($GLOBALS['customFileProcess'] === null) {
         if (! is_dir(storage_path('pail'))) {
             mkdir(storage_path('pail'), 0755, true);
         }
@@ -109,7 +116,7 @@ expect()->extend('toPailFile', function (string $expectedOutput) {
         $tempFile = storage_path('pail/test.log');
         touch($tempFile);
 
-        $process = $GLOBALS['process'] = remote([
+        $process = $GLOBALS['customFileProcess'] = remote([
             'pail',
             "--file=\"{$tempFile}\"",
         ], env: [
@@ -139,10 +146,11 @@ expect()->extend('toPailFile', function (string $expectedOutput) {
     preg_match('/^\[.*?\] \w+\.\w+: (.+)$/', (string) $lastLine, $matches);
     $waitFor = trim($matches[1] ?? (string) $lastLine);
 
+    $deadline = time() + 15;
     do {
-        $output = preg_replace('/\e\[[\d;]*m/', '', $GLOBALS['process']->getOutput());
+        $output = preg_replace('/\e\[[\d;]*m/', '', $GLOBALS['customFileProcess']->getOutput());
         usleep(10);
-    } while (! str_contains($output, $waitFor));
+    } while (! str_contains($output, $waitFor) && time() < $deadline);
 
     $output = Str::of($output)
         ->explode("\n")

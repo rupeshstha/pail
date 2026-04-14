@@ -98,7 +98,7 @@ class PailCommand extends Command
         } catch (ProcessTimedOutException $e) {
             $this->components->info('Maximum execution time exceeded.');
         } finally {
-            if (! is_string($customFilePath) || $customFilePath === '') {
+            if (! $this->option('file')) {
                 $this->file?->destroy();
             }
         }
