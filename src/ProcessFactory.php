@@ -2,9 +2,10 @@
 
 namespace Laravel\Pail;
 
-use Illuminate\Support\Facades\Process;
+use Throwable;
 use Illuminate\Support\Str;
 use Laravel\Pail\Printers\CliPrinter;
+use Illuminate\Support\Facades\Process;
 use Laravel\Pail\ValueObjects\MessageLogged;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -42,10 +43,10 @@ class ProcessFactory
                         ->map(function (string $line) use ($options, $output): ?MessageLogged {
                             try {
                                 return MessageLogged::fromJson($line);
-                            } catch (\Throwable) {
+                            } catch (Throwable) {
                                 try {
                                     return MessageLogged::fromLaravelLog($line);
-                                } catch (\Throwable) {
+                                } catch (Throwable) {
                                     if ($options->file() === null) {
                                         $output->writeln('  <fg=yellow>⚠ Pail skipped a malformed log line.</>');
                                     }
@@ -54,7 +55,7 @@ class ProcessFactory
                                 }
                             }
                         })
-                        ->filter()
+                        ->filter(fn ($messageLogged) => $messageLogged instanceof MessageLogged)
                         ->filter(fn (MessageLogged $messageLogged) => $options->accepts($messageLogged))
                         ->each(fn (MessageLogged $messageLogged) => $printer->print($messageLogged));
                 }
