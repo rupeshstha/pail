@@ -16,6 +16,7 @@ class Options
         protected ?string $level,
         protected ?string $filter,
         protected ?string $message,
+        protected ?string $file = null,
     ) {
         //
     }
@@ -37,9 +38,12 @@ class Options
         $message = $command->option('message');
         assert(is_string($message) || $message === null);
 
+        $file = $command->option('file');
+        assert(is_string($file) || $file === null);
+
         $timeout = (int) $command->option('timeout');
 
-        return new static($timeout, $authId, $level, $filter, $message);
+        return new static($timeout, $authId, $level, $filter, $message, $file);
     }
 
     /**
@@ -72,5 +76,13 @@ class Options
     public function timeout(): int
     {
         return $this->timeout;
+    }
+
+    /**
+     * Returns the path to the custom log file, if any.
+     */
+    public function file(): ?string
+    {
+        return $this->file;
     }
 }
