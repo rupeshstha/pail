@@ -23,6 +23,40 @@ class MessageLogged implements Stringable
     }
 
     /**
+     * Creates a new instance of the message logged from a standard Laravel log line.
+     *
+     * Handles lines in the format: [YYYY-MM-DD HH:MM:SS] channel.LEVEL: message
+     */
+    public static function fromLaravelLog(string $line): static
+    {
+        if (! preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \w+\.(\w+): (.+)$/s', $line, $matches)) {
+            throw new \InvalidArgumentException('Cannot parse log line.');
+        }
+
+        $time = Carbon::createFromFormat('Y-m-d H:i:s', $matches[1]);
+        assert($time instanceof Carbon);
+
+        $datetime = $time->format('Y-m-d\TH:i:s.uP');
+        $levelName = strtoupper($matches[2]);
+        $message = trim($matches[3]);
+
+        $context = [
+            '__pail' => [
+                'origin' => [
+                    'type' => 'http',
+                    'method' => '',
+                    'path' => '',
+                    'auth_id' => null,
+                    'auth_email' => null,
+                    'trace' => null,
+                ],
+            ],
+        ];
+
+        return new static($message, $datetime, $levelName, $context);
+    }
+
+    /**
      * Creates a new instance of the message logged from a json string.
      */
     public static function fromJson(string $json): static

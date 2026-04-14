@@ -39,13 +39,19 @@ class ProcessFactory
 
                     $lines
                         ->filter(fn (string $line) => $line !== '')
-                        ->map(function (string $line) use ($output): ?MessageLogged {
+                        ->map(function (string $line) use ($options, $output): ?MessageLogged {
                             try {
                                 return MessageLogged::fromJson($line);
                             } catch (\Throwable) {
-                                $output->writeln('  <fg=yellow>⚠ Pail skipped a malformed log line.</>');
+                                try {
+                                    return MessageLogged::fromLaravelLog($line);
+                                } catch (\Throwable) {
+                                    if ($options->file() === null) {
+                                        $output->writeln('  <fg=yellow>⚠ Pail skipped a malformed log line.</>');
+                                    }
 
-                                return null;
+                                    return null;
+                                }
                             }
                         })
                         ->filter()

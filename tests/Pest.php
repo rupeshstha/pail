@@ -66,12 +66,15 @@ expect()->extend('toPail', function (string $expectedOutput, array $options = []
 
         $process->start();
 
-        $process->waitUntil(function ($type, $output): bool {
+        $process->waitUntil(function ($_type, $output): bool {
             return str_contains($output, 'Tailing application logs.');
         });
     }
 
-    collect(Arr::wrap($this->value))
+    /** @var mixed $value */
+    $value = $this->value;
+
+    collect(Arr::wrap($value))
         ->each(function (string $code) {
             remote(['eval', ProcessUtils::escapeArgument(base64_encode($code.';'))])->run();
         });
@@ -80,6 +83,66 @@ expect()->extend('toPail', function (string $expectedOutput, array $options = []
         $output = preg_replace('/\e\[[\d;]*m/', '', $GLOBALS['process']->getOutput());
         usleep(10);
     } while (! str_contains($output, 'artisan eval'));
+
+    $output = Str::of($output)
+        ->explode("\n")
+        ->map(fn (string $line) => rtrim($line))
+        ->implode("\n");
+
+    expect($output)->toBe(<<<EOF
+
+           INFO  Tailing application logs. Press Ctrl+C to exit
+                         Use -v|-vv to show more details
+        $expectedOutput
+        EOF,
+    );
+
+    return $this;
+});
+
+expect()->extend('toPailFile', function (string $expectedOutput) {
+    if ($GLOBALS['process'] === null) {
+        if (! is_dir(storage_path('pail'))) {
+            mkdir(storage_path('pail'), 0755, true);
+        }
+
+        $tempFile = storage_path('pail/test.log');
+        touch($tempFile);
+
+        $process = $GLOBALS['process'] = remote([
+            'pail',
+            "--file=\"{$tempFile}\"",
+        ], env: [
+            'APP_DEBUG' => '(true)',
+            'PAIL_TESTS' => '(true)',
+        ]);
+
+        $process->start();
+
+        $process->waitUntil(function ($_type, $output): bool {
+            return str_contains($output, 'Tailing application logs.');
+        });
+    }
+
+    $tempFile = storage_path('pail/test.log');
+
+    /** @var mixed $fileValue */
+    $fileValue = $this->value;
+
+    collect(Arr::wrap($fileValue))
+        ->each(function (string $logLine) use ($tempFile) {
+            $phpCode = 'file_put_contents('.var_export($tempFile, true).', '.var_export($logLine."\n", true).', FILE_APPEND);';
+            remote(['eval', ProcessUtils::escapeArgument(base64_encode($phpCode))])->run();
+        });
+
+    $lastLine = collect(Arr::wrap($fileValue))->last();
+    preg_match('/^\[.*?\] \w+\.\w+: (.+)$/', (string) $lastLine, $matches);
+    $waitFor = trim($matches[1] ?? (string) $lastLine);
+
+    do {
+        $output = preg_replace('/\e\[[\d;]*m/', '', $GLOBALS['process']->getOutput());
+        usleep(10);
+    } while (! str_contains($output, $waitFor));
 
     $output = Str::of($output)
         ->explode("\n")
