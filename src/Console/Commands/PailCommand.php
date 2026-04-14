@@ -77,7 +77,7 @@ class PailCommand extends Command
 
         $customFilePath = $this->option('file');
 
-        if (is_string($customFilePath) && $customFilePath !== '') {
+        if (is_string($customFilePath) && !empty($customFilePath)) {
             $this->file = new File($customFilePath);
         } else {
             $this->file = new File(storage_path('pail/'.uniqid().'.pail'));
